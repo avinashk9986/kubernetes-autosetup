@@ -1,0 +1,40 @@
+---
+- name: INSTALL PACKAGE AND HOSTNAME SETUP
+  hosts: all
+  sudo: yes
+  tasks:
+     - name:  Execute the script to install docker
+       script: dockerinstall.sh
+     - name:  Execute the script to install kubernetes
+       script: kubernetesinstall.sh
+     - name: Execute the script to set hostname
+       script: change-hostname.sh
+
+- name: Master Node setup
+  hosts: kubemaster
+  tasks:
+     - name: Execute the script to init the kube-master
+       script: kube-master-init.sh
+     - name:  Execute the script to Set Home for Kubemaster
+       script: kube-master-homesetup.sh
+     - name:  Execute the script to set up kube network
+       script: kube-flannel-networksetup.sh
+     - name:  Execute the script to init Helm
+       script: helm-master-init.sh
+     - name:  Execute the script to provide permission to helm
+       script: helm-permission.sh
+     - fetch:
+          src: /home/kubernetes/join.sh
+          dest: join.sh 
+          mode: 0777
+          flat: yes
+          fail_on_missing: yes
+ 
+- name: SLAVE Node setup
+  hosts: kubeslave
+  tasks:
+     - name: Setup slave nodec
+       script: slave-setup.sh
+     - name: Run Kubeadm Join Command
+       script: join.sh
+

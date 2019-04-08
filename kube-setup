@@ -1,0 +1,57 @@
+
+
+1. sudo hostnamectl set-hostname $(hostname -f) --static
+2. show-version :- get version of kubernetes
+3. login to kubernetes user
+4. sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=$(hostname -i) --kubernetes-version v1.13.3
+5. sudo sed -i "32i\ \ \ \ - --cloud-provider=aws" vkube-controller-manager.yaml
+6. sudo sed -i "42i\ \ \ \ - --cloud-provider=aws" /etc/kubernetes/manifests/kube-apiserver.yaml
+7. sudo sed -i '3d' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+8. sudo sed -i '3iEnvironment="KUBELET_KUBECONFIG_ARGS=--cloud-provider=aws --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
+9. Setup home directory for kubernetes master
+
+    sudo cd $HOME
+	sudo whoami
+	sudo mkdir -p $HOME/.kube
+	sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+	sudo chown $(id -u):$(id -g) $HOME/.kube/config
+	export KUBECONFIG=$HOME/.kube/config
+	sudo echo "export KUBECONFIG=$HOME/.kube/config" | tee -a ~/.bashrc
+	echo "Setup complete, wait for master status to be ready"
+	sudo kubectl get nodes
+
+7. Master kubernetes network setup
+
+    kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+	kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/k8s-manifests/kube-flannel-rbac.yml
+	kubectl get nodes
+
+8.  Helm set up master
+    
+    sudo snap install helm --classic
+    sudo helm init
+
+9.  Helm Permission master
+
+        sudo kubectl create serviceaccount --namespace kube-system tiller
+	sudo kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+	sudo kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'      
+	sudo helm init --service-account tiller --upgrade
+
+
+-------------------------SLAVE-----------------------
+1. sudo hostnamectl set-hostname $(hostname -f) --static
+2. kubeadm join 10.0.21.51:6443 --token 3l3pvi.uzd55oelejb11qb7 --discovery-token-ca-cert-hash sha256:edfb2e5257b60b29a1fc458f654c57d5952d62e0b41ed824c40aa9abc0dc4344 :-dependency
+3. sudo sed -i '3d' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+4. sudo sed -i '3iEnvironment="KUBELET_KUBECONFIG_ARGS=--cloud-provider=aws --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
+
+
+
+aws ec2 create-tags --resources rtb-020d94d0e2fa2db8a --tags 'Key="kubernetes.io/cluster/test",Value=owned' :- terraform error
+not able to add role through terraform
+
+
+kubectl -n kube-system logs kube-controller-manager-ip-10-0-25-**.ap-south-1.compute.internal
+
